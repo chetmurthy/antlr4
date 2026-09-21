@@ -705,17 +705,27 @@ public class Tool {
 		return;
 	    }
 	    LexerGrammar lg = (LexerGrammar)g ;
+
+	    lg.modes.keySet().stream()
+            .sorted() // Sorts keys by natural order
+            .forEach(key -> {
+		    printATNs0(lg,key);
+            });
+	    System.exit(0) ;
+	}
+
+    public void printATNs0(LexerGrammar lg, String modeName) {
 	    if ( lg.modes.get(modeName)==null ) {
 		System.err.println("no such mode "+modeName);
 		return;
 	    }
+	    System.out.println("==== "+modeName+" ====");
 	    ParserATNFactory f = new LexerATNFactory(lg);
 	    ATN nfa = f.createATN();
 	    ATNState startState = nfa.modeNameToStartState.get(modeName);
-	    ATNPrinter serializer = new ATNPrinter(g, startState);
+	    ATNPrinter serializer = new ATNPrinter(lg, startState);
 	    String result = serializer.asString();
 	    System.out.print(result);
-	    System.exit(0) ;
 	}
 
 	public static String generateInterpreterData(Grammar g) {
