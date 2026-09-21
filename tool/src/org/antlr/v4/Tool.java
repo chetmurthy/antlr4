@@ -14,6 +14,7 @@ import org.antlr.runtime.ParserRuleReturnScope;
 import org.antlr.runtime.RecognitionException;
 import org.antlr.v4.analysis.AnalysisPipeline;
 import org.antlr.v4.automata.ATNFactory;
+import org.antlr.v4.automata.ATNPrinter;
 import org.antlr.v4.automata.LexerATNFactory;
 import org.antlr.v4.automata.ParserATNFactory;
 import org.antlr.v4.codegen.CodeGenPipeline;
@@ -24,6 +25,8 @@ import org.antlr.v4.parse.GrammarASTAdaptor;
 import org.antlr.v4.parse.GrammarTreeVisitor;
 import org.antlr.v4.parse.ToolANTLRLexer;
 import org.antlr.v4.parse.ToolANTLRParser;
+import org.antlr.v4.runtime.atn.ATN;
+import org.antlr.v4.runtime.atn.ATNState;
 import org.antlr.v4.runtime.RuntimeMetaData;
 import org.antlr.v4.runtime.misc.LogManager;
 import org.antlr.v4.runtime.misc.IntegerList;
@@ -98,6 +101,7 @@ public class Tool {
 	public String outputDirectory;
 	public String libDirectory;
 	public boolean generate_ATN_dot = false;
+	public String print_ATN = null;
 	public String grammarEncoding = null; // use default locale's encoding
 	public String msgFormat = "antlr";
 	public boolean launch_ST_inspector = false;
@@ -117,6 +121,7 @@ public class Tool {
 		new Option("outputDirectory",             "-o", OptionArgType.STRING, "specify output directory where all output is generated"),
 		new Option("libDirectory",                "-lib", OptionArgType.STRING, "specify location of grammars, tokens files"),
 		new Option("generate_ATN_dot",            "-atn", "generate rule augmented transition network diagrams"),
+		new Option("print_ATN",            "-print-atn", OptionArgType.STRING, "print ATN"),
 		new Option("grammarEncoding",             "-encoding", OptionArgType.STRING, "specify grammar file encoding; e.g., euc-jp"),
 		new Option("msgFormat",                   "-message-format", OptionArgType.STRING, "specify output style for messages in antlr, gnu, vs2005"),
 		new Option("longMessages",                "-long-messages", "show exception details when available for errors and warnings"),
@@ -384,6 +389,7 @@ public class Tool {
 		g.atn = factory.createATN();
 
 		if ( generate_ATN_dot ) generateATNs(g);
+		if ( print_ATN != null ) printATNs(g, print_ATN);
 
 		if (gencode && g.tool.getNumErrors()==0 ) {
 			String interpFile = generateInterpreterData(g);
@@ -691,6 +697,25 @@ public class Tool {
 				}
 			}
 		}
+	}
+
+    public void printATNs(Grammar g, String modeName) {
+	    if (!(g instanceof LexerGrammar)) {
+		System.err.println("ERROR: not a lexer grammar");
+		return;
+	    }
+	    LexerGrammar lg = (LexerGrammar)g ;
+	    if ( lg.modes.get(modeName)==null ) {
+		System.err.println("no such mode "+modeName);
+		return;
+	    }
+	    ParserATNFactory f = new LexerATNFactory(lg);
+	    ATN nfa = f.createATN();
+	    ATNState startState = nfa.modeNameToStartState.get(modeName);
+	    ATNPrinter serializer = new ATNPrinter(g, startState);
+	    String result = serializer.asString();
+	    System.out.print(result);
+	    System.exit(0) ;
 	}
 
 	public static String generateInterpreterData(Grammar g) {
